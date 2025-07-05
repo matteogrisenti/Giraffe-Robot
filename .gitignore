@@ -3,3 +3,4 @@ devel/
 *.pyc
 __pycache__/
 *.log
+.catkin_tools/
