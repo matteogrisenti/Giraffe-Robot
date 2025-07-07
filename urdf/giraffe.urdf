@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 <robot name="giraffe_robot" xmlns:xacro="http://ros.org/wiki/xacro">
 
+  <xacro:property name="pi" value="3.141592653589793"/>
+  <xacro:property name="pi_2" value="1.5707963267948966"/>
+
   <link name="world"/>
 
   <!-- Floor -->
@@ -29,7 +32,7 @@
         <box size="5 12 0.1"/>
       </geometry>
       <material name="ceiling_color">
-        <color rgba="0.8 0.8 0.8 0.5"/>
+        <color rgba="0.8 0.8 0.8 1"/>
       </material>
     </visual>
   </link>
@@ -43,108 +46,165 @@
   <link name="base_link">
     <visual>
       <geometry>
-        <box size="0.4 0.4 0.1"/>
+        <mesh filename="package://ur_description/meshes/ur5/collision/base.stl"/>
       </geometry>
-      <origin xyz="0 20 0" rpy="0 0 0"/>
-      <material name="gray">
-        <color rgba="0.6 0.6 0.6 1"/>
+      <material name="LightGrey">
+        <color rgba="0.7 0.7 0.7 1.0"/>
       </material>
     </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://ur_description/meshes/ur5/collision/base.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="4.0"/>
+      <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+      <inertia ixx="0.00443333156" ixy="0.0" ixz="0.0" iyy="0.00443333156" iyz="0.0" izz="0.0072"/>
+    </inertial>
   </link>
   <joint name="base_link_fixed" type="fixed">
-    <parent link="ceiling"/>
+    <parent link="world"/>
     <child link="base_link"/>
-    <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+    <origin xyz="2.5 6 4" rpy="${pi} 0 ${pi_2}"/>
   </joint>
 
-  <!-- Spherical joint: yaw -->
-  <joint name="yaw_joint" type="revolute">
+  <!-- Shoulder joint 1: revolute yaw -->
+  <joint name="shoulder_yaw_joint" type="revolute">
     <parent link="base_link"/>
-    <child link="yaw_link"/>
+    <child link="shoulder_link"/>
+    <origin xyz="0.0 0.0 0.1" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <origin xyz="0 0 0.05" rpy="0 0 0"/>
-    <limit effort="10" velocity="1.0" lower="-3.14" upper="3.14"/>
+    <limit lower="-${pi}" upper="${pi}" effort="50.0" velocity="1.5"/>
   </joint>
 
-  <link name="yaw_link">
+  <link name="shoulder_link">
     <visual>
+      <origin xyz="0 0 -0.05" rpy="0 0 0"/> 
       <geometry>
         <cylinder length="0.1" radius="0.05"/>
       </geometry>
       <material name="blue">
-        <color rgba="0.2 0.2 0.8 1"/>
+        <color rgba="0.4 0.6 1.0 1"/>
       </material>
     </visual>
   </link>
 
-  <!-- Spherical joint: pitch -->
-  <joint name="pitch_joint" type="revolute">
-    <parent link="yaw_link"/>
+
+  <!-- Spherical joint 2: pitch pitch -->
+  <joint name="shoulder_pitch_joint" type="revolute">
+    <parent link="shoulder_link"/>
     <child link="pitch_link"/>
-    <axis xyz="1 0 0"/>
-    <origin xyz="0 0 0.05" rpy="0 0 0"/>
-    <limit effort="10" velocity="1.0" lower="-1.57" upper="1.57"/>
+    <origin rpy="${pi_2} 0.0 0.0" xyz="0.0 0.0 0.0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="150.0" lower="0" upper="${pi}" velocity="3.15"/>
+    <dynamics damping="0.0" friction="0.0"/>
   </joint>
 
-  <link name="pitch_link">
+
+  <link name="pitch_link"> 
+    <!-- Visuals for the shoulder_pitch_joint link -->
     <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <cylinder length="0.1" radius="0.05"/>
+        <cylinder radius="0.05" length="0.1"/>
       </geometry>
       <material name="green">
-        <color rgba="0.2 0.8 0.2 1"/>
+        <color rgba="0.2 0.8 0.2 1.0"/> <!-- verde acceso -->
       </material>
     </visual>
-  </link>
 
-  <!-- Prismatic joint (vertical drop) -->
-  <joint name="extend_joint" type="prismatic">
-    <parent link="pitch_link"/>
-    <child link="extend_link"/>
-    <axis xyz="0 0 -1"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <limit effort="50" velocity="0.5" lower="0" upper="3.0"/>
-  </joint>
-
-  <link name="extend_link">
+    <!-- Orizzontale: cilindro disteso lungo X -->
     <visual>
+      <origin xyz="1.25 0 0" rpy="0 ${pi_2} 0"/> <!-- ruota per allineare asse lungo X -->
       <geometry>
-        <cylinder length="3.0" radius="0.03"/>
+        <cylinder length="2.5" radius="0.05"/>
       </geometry>
-      <origin xyz="0 0 -1.5" rpy="0 0 0"/>
+      <material name="metal">
+        <color rgba="0.6 0.6 0.6 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Visuals for the prismatic joint -->
+    <visual>
+      <origin xyz="2.4 0.1 0" rpy="0 0 0"/> 
+      <geometry>
+        <box size="0.2 0.1 0.1"/>
+      </geometry>
       <material name="orange">
         <color rgba="1 0.5 0 1"/>
       </material>
     </visual>
   </link>
 
-  <!-- Revolute joint 1: pitch for microphone -->
-  <joint name="mic_pitch_joint" type="revolute">
-    <parent link="extend_link"/>
-    <child link="mic_pitch_link"/>
-    <axis xyz="1 0 0"/>
-    <origin xyz="0 0 -3.0" rpy="0 0 0"/>
-    <limit effort="5" velocity="1.0" lower="-1.57" upper="1.57"/>
+
+  <!-- Prismatic joint (vertical drop) -->
+  <joint name="prismatic_joint" type="prismatic">
+    <parent link="pitch_link"/>
+    <child link="extend_link"/>
+    <axis xyz="0 0 1"/>
+    <origin xyz="2.4 0.1 0" rpy="0 ${pi_2} 0"/>
+    <limit effort="50" velocity="0.5" lower="0" upper="4"/>
   </joint>
 
-  <link name="mic_pitch_link">
+
+  <link name="extend_link">
     <visual>
       <geometry>
-        <box size="0.1 0.05 0.3"/>
+        <cylinder length="4.5" radius="0.03"/>
       </geometry>
-      <origin xyz="0 0 -0.15" rpy="0 0 0"/>
-      <material name="black">
-        <color rgba="0 0 0 1"/>
-      </material>
+      <origin xyz="0 0 -2.05" rpy="0 0 0"/>
+      <material name="metal"/>
     </visual>
   </link>
 
-  <!-- Revolute joint 2: roll for microphone -->
+
+  <!-- Spherical joint 2: roll for microphone -->
   <joint name="mic_roll_joint" type="revolute">
-    <parent link="mic_pitch_link"/>
+    <parent link="extend_link"/>
+    <child link="forearm_link"/>
+    <axis xyz="0 0 1"/>
+    <origin xyz="0 0 0.2" rpy="${pi} -${pi_2} 0"/>
+    <limit effort="5" velocity="1.0" lower="-1.57" upper="1.57"/>
+  </joint>
+
+  <link name="forearm_link">
+    <!-- Visuals for the mic_roll_joint link -->
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="0.06"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0.2 0.8 0.2 1.0"/> <!-- verde acceso -->
+      </material>
+    </visual>
+
+    <!-- Orizzontale: cilindro disteso lungo X -->
+    <visual>
+      <geometry>
+        <cylinder length="1" radius="0.03"/>
+      </geometry>
+      <origin xyz="0.5 0 0" rpy="0 ${pi_2} 0"/>
+      <material name="metal"/>
+    </visual>
+
+    <!-- Visuals for the mic_yaw_joint link -->
+    <visual>
+      <origin xyz="1.03 0 0" rpy="0 ${pi_2} 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="0.06"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+  </link>
+
+  <!-- Revolute joint 2: yaw for microphone -->
+  <joint name="mic_yaw_joint" type="revolute">
+    <parent link="forearm_link"/>
     <child link="mic_link"/>
     <axis xyz="0 0 1"/>
-    <origin xyz="0 0 -0.3" rpy="0 0 0"/>
+    <origin xyz="1.03 0 0" rpy="-${pi_2} 0 -${pi_2}"/>
     <limit effort="5" velocity="1.0" lower="-3.14" upper="3.14"/>
   </joint>
 
@@ -152,10 +212,29 @@
   <link name="mic_link">
     <visual>
       <geometry>
+        <cylinder length="0.15" radius="0.01"/>
+      </geometry>
+      <origin xyz="0.075 0 0" rpy="0 -${pi_2} 0"/> 
+      <material name="metal"/>
+    </visual>
+  </link>
+
+  <joint name="mic_fixed" type="fixed">
+    <parent link="mic_link"/>
+    <child link="mic"/>
+    <origin xyz="0.15 0 0" rpy="0 ${pi_2} 0"/>
+  </joint>
+
+  <!-- Microphone end-effector -->
+  <link name="mic">
+    <visual>
+      <geometry>
         <cylinder length="0.15" radius="0.02"/>
       </geometry>
-      <origin xyz="0 0 -0.075" rpy="0.523 0 0"/> <!-- ~30° pitch -->
-      <material name="black"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/> 
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
     </visual>
   </link>
 

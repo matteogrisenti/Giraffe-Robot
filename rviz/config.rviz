@@ -78,19 +78,7 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        base_link:
-          Value: false
-        ee_link:
-          Value: false
-        forearm_link:
-          Value: false
-        shoulder_link:
-          Value: false
-        upper_arm_link:
-          Value: false
-        world:
-          Value: false
-        wrist_1_link:
+        ceiling:
           Value: false
       Marker Alpha: 1
       Marker Scale: 0.6000000238418579
@@ -112,7 +100,7 @@ Visualization Manager:
   Global Options:
     Background Color: 252; 252; 252
     Default Light: true
-    Fixed Frame: base_link
+    Fixed Frame: world
     Frame Rate: 30
   Name: root
   Tools:
