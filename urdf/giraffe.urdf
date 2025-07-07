@@ -2,10 +2,41 @@
 <robot name="giraffe_robot" xmlns:xacro="http://ros.org/wiki/xacro">
 
   <link name="world"/>
-  <joint name="world_joint" type="fixed">
+
+  <!-- Floor -->
+  <link name="floor">
+    <visual>
+      <geometry>
+        <box size="5 12 0.1"/>
+      </geometry>
+      <origin xyz="0 0 -0.05" rpy="0 0 0"/>
+      <material name="gray">
+        <color rgba="0.5 0.5 0.5 1"/>
+      </material>
+    </visual>
+  </link> 
+  <joint name="floor_fixed" type="fixed">
     <parent link="world"/>
-    <child link="base_link"/>
-    <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+    <child link="floor"/>
+    <origin xyz="2.5 6 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Ceiling -->
+  <link name="ceiling">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="5 12 0.1"/>
+      </geometry>
+      <material name="ceiling_color">
+        <color rgba="0.8 0.8 0.8 0.5"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="ceiling_fixed" type="fixed">
+    <parent link="floor"/>
+    <child link="ceiling"/>
+    <origin xyz="0 0 4.05" rpy="0 0 0"/>
   </joint>
 
   <!-- Base link (ceiling-mounted) -->
@@ -20,6 +51,11 @@
       </material>
     </visual>
   </link>
+  <joint name="base_link_fixed" type="fixed">
+    <parent link="ceiling"/>
+    <child link="base_link"/>
+    <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+  </joint>
 
   <!-- Spherical joint: yaw -->
   <joint name="yaw_joint" type="revolute">

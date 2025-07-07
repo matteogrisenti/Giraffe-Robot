@@ -1,0 +1,4 @@
+1) source devel/setup.bash
+        check: rospack list | grep giraffe_robot
+
+2) roslaunch giraffe_robot visualize.launch
