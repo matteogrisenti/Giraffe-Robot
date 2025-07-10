@@ -2,3 +2,7 @@
         check: rospack list | grep giraffe_robot
 
 2) roslaunch giraffe_robot visualize.launch
+
+
+
+rosrun xacro xacro /home/matteo/giraffe_ws/src/giraffe_robot/urdf/giraffe.urdf -o /home/matteo/giraffe_ws/src/giraffe_robot/urdf/giraffe_processed.urdf
