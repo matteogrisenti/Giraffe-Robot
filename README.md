@@ -88,3 +88,7 @@ giraffe_robot/
 ├── README.md
 ├── .gitignore
 ```
+
+
+## 📜 Mension
+- Refernece Git Repository: [text](https://github.com/idra-lab/intro_robotics_labs/blob/main/scripts/L1_1_kinematics.py)

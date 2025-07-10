@@ -7,7 +7,7 @@ import pinocchio as pin
 import numpy as np
 from pathlib import Path
 
-from direct_kinematics import directKinematics  
+from kinematics import directKinematics, differentKinematics  
 
 # Load the URDF model
 current_dir = Path(__file__).resolve().parent
@@ -23,7 +23,9 @@ data = model.createData()
 frames = ['base_link', 'shoulder_link', 'arm_link', 'extend_link', 'wrist_link', 'mic_link', 'mic']
 
 
-def single_comparison():
+
+######################################### DIRECT KINEMATICS TEST #########################################
+def direct_kinematic_single_comparison():
     """    
     Runs a single comparison between custom and Pinocchio forward kinematics.
     This function generates a random joint configuration, computes the forward kinematics using both methods,
@@ -55,10 +57,10 @@ def single_comparison():
         # Compare results
         print(f"\nFrame: {frame}")
         print("- Custom T:\n", custom_T[frames.index(frame)])
-        print("-Pinocchio T:\n", pin_T_0x)
+        print("- Pinocchio T:\n", pin_T_0x)
 
 
-def test_DK_iteration():
+def test_direct_kinematic_iteration():
     """
     Runs a single DK test and returns per-frame matrix errors (custom - pinocchio) as 4x4 numpy arrays.
     """
@@ -84,7 +86,7 @@ def test_DK_iteration():
     return errors
 
 
-def test_DK(n_iterations=10):
+def test_direct_kinematic(n_iterations=10):
     """
     Runs DK tests for multiple iterations and returns the average element-wise 4x4 error matrix per frame.
     """
@@ -92,7 +94,7 @@ def test_DK(n_iterations=10):
     valid_counts = {frame: 0 for frame in frames}
 
     for _ in range(n_iterations):
-        iteration_errors = test_DK_iteration()
+        iteration_errors = test_direct_kinematic_iteration()
         for frame, err_matrix in iteration_errors.items():
             accumulated_errors[frame] += err_matrix
             valid_counts[frame] += 1
@@ -112,10 +114,39 @@ def test_DK(n_iterations=10):
     return avg_errors
 
 
-if __name__ == "__main__":
-    print("Running single comparison...")
-    single_comparison()
 
-    print("\nRunning DK test with 10 iterations...")
-    test_DK(n_iterations=10)
+######################################### DIFFERNTIAL KINEMATICS TEST #########################################
+def differential_kinematic_single_comparison():
+    # Generate a random valid joint configuration
+    test_q = pin.randomConfiguration(model)
+    print("Test joint configuration (q):", test_q, "\n")
+
+    J_custom = differentKinematics(test_q)  
+
+    # Get the frame index (use frame name or index directly)
+    frame_name = "mic"
+    frame_id = model.getFrameId(frame_name)
+
+    # Compute Pinocchio's Jacobian at that frame
+    J_pinocchio = pin.computeFrameJacobian(model, data, test_q, frame_id, pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)
+
+    # Compare results
+    print("- Custom J:\n", J_custom)
+    print("- Pinocchio J:\n", J_pinocchio)
+
+    # Compute the difference
+    jacobian_diff = J_custom - J_pinocchio
+    print(f"Custom vs Pinocchio Jacobian difference at frame '{frame_name}':\n", jacobian_diff)
+
+
+
+if __name__ == "__main__":
+    # print("Running single comparison...")
+    # direct_kinematic_single_comparison()
+
+    # print("\nRunning DK test with 10 iterations...")
+    # test_direct_kinematic(n_iterations=10)
+
+    print("\nRunning differential kinematic single comparison...")
+    differential_kinematic_single_comparison()
 

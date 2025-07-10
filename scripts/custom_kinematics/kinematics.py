@@ -151,3 +151,56 @@ def directKinematics(q):
     T_we = T_w5.dot(T_5e)  # from world to end-effector
 
     return T_w0, T_w1, T_w2, T_w3, T_w4, T_w5, T_we
+
+
+
+
+def differentKinematics(q):
+
+    # Compute forward kinematics for the different configuration
+    T_w0, T_w1, T_w2, T_w3, T_w4, T_w5, T_we = directKinematics(q)
+
+    # link position vectors
+    p_w1 = T_w1[:3,3]
+    p_w2 = T_w2[:3,3]
+    p_w4 = T_w4[:3,3]
+    p_w5 = T_w5[:3,3]
+    p_we = T_we[:3,3]
+
+    # z vectors for rotations
+    z1 = T_w1[:3,2] # Z axis
+    z2 = T_w2[:3,2] # Z axis
+    z3 = T_w3[:3,2] # Z axis
+    z4 = T_w4[:3,2] # Z axis
+    z5 = T_w5[:3,2] # Z axis
+
+    # vectors from link i to end-effector
+    p_w1e = p_we - p_w1
+    p_w2e = p_we - p_w2
+    p_w4e = p_we - p_w4
+    p_w5e = p_we - p_w5
+
+    # Linear velocity Jacobian (3 × 5)
+    J_p = np.hstack((
+        np.cross(z1, p_w1e).reshape(3, 1),     # Revolute
+        np.cross(z2, p_w2e).reshape(3, 1),     # Revolute
+        z3.reshape(3, 1),                      # Prismatic
+        np.cross(z4, p_w4e).reshape(3, 1),     # Revolute
+        np.cross(z5, p_w5e).reshape(3, 1)      # Revolute
+    ))
+
+    # Angular velocity Jacobian (3 × 5)
+    J_o = np.hstack((
+        z1.reshape(3, 1),                      # Revolute
+        z2.reshape(3, 1),                      # Revolute
+        np.zeros((3, 1)),                      # Prismatic → zero angular
+        z4.reshape(3, 1),                      # Revolute
+        z5.reshape(3, 1)                       # Revolute
+    ))
+
+    # Combine linear + angular
+    J = np.vstack((J_p, J_o))  # 6 × 5
+
+    return J,
+
+    
