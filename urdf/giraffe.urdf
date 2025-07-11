@@ -18,7 +18,7 @@
   <!-- Prismatic Extension -->
   <xacro:property name="prismatic_height_delta" value="0.1"/>
   <xacro:property name="prismatic_travel" value="4.0"/>
-  <xacro:property name="extend_link_length" value="${prismatic_travel + wrist_radius}s"/>
+  <xacro:property name="extend_link_length" value="${prismatic_travel + wrist_radius}"/>
   <!-- Wrist -->
   <xacro:property name="wrist_joint_height" value="0.1"/>
   <xacro:property name="wrist_radius" value="0.025"/>
@@ -135,7 +135,8 @@
       <inertia
         ixx="${ (1.0/12.0) * shoulder_joint_mass * ( (6*pow(shoulder_joint_radius,2)) + (5*pow(shoulder_joint_height,2) ) ) }"
         iyy="${ (1.0/12.0) * shoulder_joint_mass * ( (9*pow(shoulder_joint_radius,2)) + (4*pow(shoulder_joint_height,2) ) ) }"
-        izz="${ (1.0/12.0) * shoulder_joint_mass * ( (9*pow(shoulder_joint_radius,2)) + (pow(shoulder_joint_height,2) ) ) }"/>
+        izz="${ (1.0/12.0) * shoulder_joint_mass * ( (9*pow(shoulder_joint_radius,2)) + (pow(shoulder_joint_height,2) ) ) }"
+        ixy="0.0"  ixz="0.0"  iyz="0.0"/>
     </inertial>
 
   </link>
@@ -182,8 +183,9 @@
       <mass value="${arm_mass}"/>
       <inertia
        ixx="${(1/2.0)*arm_mass*pow(arm_radius,2)}"
-       iyy="${(1/12.0)*arm_mass*(3*pow(arm_radius,2)+pow(arm_cylinder_length,2))}"
-       izz="${(1/12.0)*arm_mass*(3*pow(arm_radius,2)+pow(arm_cylinder_length,2))}"/>
+       iyy="${(1/12.0)*arm_mass*(3*pow(arm_radius,2)+pow(arm_length,2))}"
+       izz="${(1/12.0)*arm_mass*(3*pow(arm_radius,2)+pow(arm_length,2))}"
+       ixy="0.0"  ixz="0.0"  iyz="0.0"/>
     </inertial>
   </link>
 
@@ -203,7 +205,7 @@
       <geometry>
         <cylinder length="${extend_link_length}" radius="${wrist_radius}"/>
       </geometry>
-      <origin xyz="0 0 -${extend_link_length /2}" rpy="0 0 0"/>
+      <origin xyz="0 0 -${extend_link_length / 2}" rpy="0 0 0"/>
       <material name="metal"/>
     </visual>
   
@@ -213,7 +215,8 @@
       <inertia
         ixx="${(1.0/12.0) * extend_link_mass * (3 * pow(wrist_radius, 2) + pow(extend_link_length, 2))}"
         iyy="${(1.0/12.0) * extend_link_mass * (3 * pow(wrist_radius, 2) + pow(extend_link_length, 2))}"
-        izz="${(1.0/2.0) * extend_link_mass * pow(wrist_radius, 2)}"/>
+        izz="${(1.0/2.0) * extend_link_mass * pow(wrist_radius, 2)}"
+        ixy="0.0"  ixz="0.0"  iyz="0.0"/>
     </inertial>
   </link>
 
@@ -262,7 +265,8 @@
       <inertia
         ixx="${(1.0/12.0) * wrist_link_mass * (3 * pow(wrist_radius, 2) + pow(( wrist_link_length +4*wrist_radius ), 2))}"
         iyy="${(1.0/12.0) * wrist_link_mass * (3 * pow(wrist_radius, 2) + pow(( wrist_link_length +4*wrist_radius ), 2))}"
-        izz="${(1.0/2.0) * wrist_link_mass * pow(wrist_radius, 2)}"/>
+        izz="${(1.0/2.0) * wrist_link_mass * pow(wrist_radius, 2)}"
+        ixy="0.0"  ixz="0.0"  iyz="0.0"/>
     </inertial>
   </link>
 
@@ -294,7 +298,8 @@
       <inertia
         ixx="${(1.0/12.0) * mic_stick_mass * (3 * pow(mic_stick_radius, 2) + pow(mic_stick_length, 2))}"
         iyy="${(1.0/12.0) * mic_stick_mass * (3 * pow(mic_stick_radius, 2) + pow(mic_stick_length, 2))}"
-        izz="${(1.0/2.0) * mic_stick_mass * pow(mic_stick_radius, 2)}"/>
+        izz="${(1.0/2.0) * mic_stick_mass * pow(mic_stick_radius, 2)}"
+        ixy="0.0"  ixz="0.0"  iyz="0.0"/>
     </inertial>
   </link>
 
@@ -319,7 +324,8 @@
       <inertia
         ixx="${(2.0/5.0) * mic_mass * pow(mic_stick_radius, 2)}"
         iyy="${(2.0/5.0) * mic_mass * pow(mic_stick_radius, 2)}"
-        izz="${(2.0/5.0) * mic_mass * pow(mic_stick_radius, 2)}"/>
+        izz="${(2.0/5.0) * mic_mass * pow(mic_stick_radius, 2)}"
+        ixy="0.0"  ixz="0.0"  iyz="0.0"/>
     </inertial>
   </link>
 
