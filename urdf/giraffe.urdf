@@ -18,6 +18,7 @@
   <!-- Prismatic Extension -->
   <xacro:property name="prismatic_height_delta" value="0.1"/>
   <xacro:property name="prismatic_travel" value="4.0"/>
+  <xacro:property name="extend_link_length" value="${prismatic_travel + wrist_radius}s"/>
   <!-- Wrist -->
   <xacro:property name="wrist_joint_height" value="0.1"/>
   <xacro:property name="wrist_radius" value="0.025"/>
@@ -25,6 +26,15 @@
   <!-- Microphone -->
   <xacro:property name="mic_stick_length" value="0.15"/>
   <xacro:property name="mic_stick_radius" value="0.015"/>
+
+
+   <!-- Mass Computation --> 
+  <xacro:property name="shoulder_joint_mass" value="${rho_al * pi * pow(shoulder_joint_radius,2) * shoulder_joint_height}"/>
+  <xacro:property name="arm_mass" value="${rho_al * pi * pow(arm_radius,2) * arm_length}"/>
+  <xacro:property name="extend_link_mass" value="${rho_al * pi * pow(wrist_radius,2) * extend_link_length}"/>
+  <xacro:property name="wrist_link_mass" value="${rho_al * pi * pow(wrist_radius,2) * ( wrist_link_length + (4*wrist_radius) )}"/>
+  <xacro:property name="mic_stick_mass" value="${rho_al * pi * pow(mic_stick_radius,2) * mic_stick_length}"/>
+  <xacro:property name="mic_mass" value="${rho_al * (4.0/3.0) * pi * pow(mic_stick_radius,3)}"/>
 
   <!-- ===================== World & Environment ===================== -->
   <link name="world"/>
@@ -82,12 +92,6 @@
         <color rgba="1 0 0 1"/>
       </material>
     </visual>
-    <collision>
-      <geometry>
-        <cylinder radius="${base_radius}" length="0"/>
-      </geometry>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-    </collision>
   </link>
   
 
@@ -103,6 +107,7 @@
 
   <!-- Yaw Revolution Joint representation -->
   <link name="shoulder_link">
+    <!-- Yaw Revolution Joint representation -->
     <visual>
       <origin xyz="0 0 ${-shoulder_joint_height/2}" rpy="0 0 0"/> 
       <geometry>
@@ -112,6 +117,27 @@
         <color rgba="0.4 0.6 1.0 1"/>
       </material>
     </visual>
+
+    <!-- Pitch Revolution Joint representation -->
+    <visual>
+      <origin xyz="0 0 0" rpy="-${pi_2} 0 0"/>
+      <geometry>
+        <cylinder radius="${shoulder_joint_radius}" length="${shoulder_joint_height}"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0.2 0.8 0.2 1.0"/> 
+      </material>
+    </visual>
+
+    <inertial>
+      <origin xyz="0 0 ${-shoulder_joint_height/4}" rpy="0 0 0"/>
+      <mass value="${2 * shoulder_joint_mass}"/>
+      <inertia
+        ixx="${ (1.0/12.0) * shoulder_joint_mass * ( (6*pow(shoulder_joint_radius,2)) + (5*pow(shoulder_joint_height,2) ) ) }"
+        iyy="${ (1.0/12.0) * shoulder_joint_mass * ( (9*pow(shoulder_joint_radius,2)) + (4*pow(shoulder_joint_height,2) ) ) }"
+        izz="${ (1.0/12.0) * shoulder_joint_mass * ( (9*pow(shoulder_joint_radius,2)) + (pow(shoulder_joint_height,2) ) ) }"/>
+    </inertial>
+
   </link>
 
   <!-- Revolute joint 2: roll for shoulder -->
@@ -128,17 +154,6 @@
 
   <!-- ======== Arm ======== -->
   <link name="arm_link"> 
-    <!-- Pitch Revolution Joint representation -->
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="${shoulder_joint_radius}" length="${shoulder_joint_height}"/>
-      </geometry>
-      <material name="green">
-        <color rgba="0.2 0.8 0.2 1.0"/> 
-      </material>
-    </visual>
-
     <!-- Metallic Arm -->
     <visual>
       <origin xyz="${arm_length/2+0.025} 0 0" rpy="0 ${pi_2} 0"/> 
@@ -161,6 +176,15 @@
         <color rgba="1 0.5 0 1"/>
       </material>
     </visual>
+  
+    <inertial>
+      <origin xyz="${arm_length/2 + 0.025} 0 0" rpy="0 ${pi_2} 0"/>
+      <mass value="${arm_mass}"/>
+      <inertia
+       ixx="${(1/2.0)*arm_mass*pow(arm_radius,2)}"
+       iyy="${(1/12.0)*arm_mass*(3*pow(arm_radius,2)+pow(arm_cylinder_length,2))}"
+       izz="${(1/12.0)*arm_mass*(3*pow(arm_radius,2)+pow(arm_cylinder_length,2))}"/>
+    </inertial>
   </link>
 
 
@@ -177,11 +201,20 @@
   <link name="extend_link">
     <visual>
       <geometry>
-        <cylinder length="${prismatic_travel + wrist_radius}" radius="${wrist_radius}"/>
+        <cylinder length="${extend_link_length}" radius="${wrist_radius}"/>
       </geometry>
-      <origin xyz="0 0 -${(prismatic_travel + wrist_radius) /2}" rpy="0 0 0"/>
+      <origin xyz="0 0 -${extend_link_length /2}" rpy="0 0 0"/>
       <material name="metal"/>
     </visual>
+  
+    <inertial>
+      <origin xyz="0 0 -${extend_link_length /2}" rpy="0 0 0"/>
+      <mass value="${extend_link_mass}"/>
+      <inertia
+        ixx="${(1.0/12.0) * extend_link_mass * (3 * pow(wrist_radius, 2) + pow(extend_link_length, 2))}"
+        iyy="${(1.0/12.0) * extend_link_mass * (3 * pow(wrist_radius, 2) + pow(extend_link_length, 2))}"
+        izz="${(1.0/2.0) * extend_link_mass * pow(wrist_radius, 2)}"/>
+    </inertial>
   </link>
 
 
@@ -222,6 +255,15 @@
       </geometry>
       <material name="blue"/>
     </visual>
+
+    <inertial>
+      <origin xyz="0 0 ${( wrist_link_length +4*wrist_radius ) / 2}" rpy="0 0 0"/>
+      <mass value="${wrist_link_mass}"/>
+      <inertia
+        ixx="${(1.0/12.0) * wrist_link_mass * (3 * pow(wrist_radius, 2) + pow(( wrist_link_length +4*wrist_radius ), 2))}"
+        iyy="${(1.0/12.0) * wrist_link_mass * (3 * pow(wrist_radius, 2) + pow(( wrist_link_length +4*wrist_radius ), 2))}"
+        izz="${(1.0/2.0) * wrist_link_mass * pow(wrist_radius, 2)}"/>
+    </inertial>
   </link>
 
   <!-- Revolute joint 2: pitch for microphone -->
@@ -245,6 +287,15 @@
         <color rgba="0 0 0 1"/>
       </material>
     </visual>
+
+    <inertial>
+      <origin xyz="${(mic_stick_length / 2 ) + wrist_radius} 0 0" rpy="0 ${pi_2} 0"/>
+      <mass value="${mic_stick_mass}"/>
+      <inertia
+        ixx="${(1.0/12.0) * mic_stick_mass * (3 * pow(mic_stick_radius, 2) + pow(mic_stick_length, 2))}"
+        iyy="${(1.0/12.0) * mic_stick_mass * (3 * pow(mic_stick_radius, 2) + pow(mic_stick_length, 2))}"
+        izz="${(1.0/2.0) * mic_stick_mass * pow(mic_stick_radius, 2)}"/>
+    </inertial>
   </link>
 
   <joint name="mic_stick_joint" type="fixed">
@@ -261,6 +312,15 @@
       <origin xyz="-${mic_stick_radius} 0 0" rpy="0 0 0"/> 
       <material name="black"/>
     </visual>
+
+    <inertial>
+      <origin xyz="-${mic_stick_radius} 0 0" rpy="0 0 0"/>
+      <mass value="${mic_stick_mass}"/>
+      <inertia
+        ixx="${(2.0/5.0) * mic_mass * pow(mic_stick_radius, 2)}"
+        iyy="${(2.0/5.0) * mic_mass * pow(mic_stick_radius, 2)}"
+        izz="${(2.0/5.0) * mic_mass * pow(mic_stick_radius, 2)}"/>
+    </inertial>
   </link>
 
 </robot>
