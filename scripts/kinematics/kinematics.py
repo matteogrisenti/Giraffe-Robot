@@ -203,4 +203,157 @@ def differentKinematics(q):
 
     return J,
 
+
+def rot2rpy(R):
+    """
+    Convert a rotation matrix to roll-pitch-yaw angles.
     
+    :param R: Rotation matrix (3x3).
+    :return: Roll, pitch, yaw angles (3-element array).
+    """
+    roll = math.atan2(R[2, 1], R[2, 2])
+    pitch = math.atan2(-R[2, 0], math.sqrt(R[2, 1]**2 + R[2, 2]**2))
+    yaw = math.atan2(R[1, 0], R[0, 0])
+    
+    return np.array([roll, pitch, yaw])
+
+def getError(p_desired, pitch_desired, model, data, q):
+    """
+    Compute the error between the desired end-effector pose and the current pose.
+    
+    :param p_desired: Desired end-effector position (3-element array).
+    :param pitch_desired: Desired end-effector pitch orientation ( around the Y axis )
+    :param q0: Initial guess for joint angles (5-element array).
+    :return: Error vector (6-element array).
+    """
+    
+    # Compute End Effector pose from current joint angles
+    pin.forwardKinematics(model, data, q)
+    pin.updateFramePlacements(model, data)
+    frame_id = model.getFrameId('mic')
+    T_we_current = data.oMf[frame_id].homogeneous  # Get the end-effector pose
+
+    # Position error
+    p_current = T_we_current[:3, 3]
+    error_position = p_desired - p_current
+
+    # Pitch error
+    R_current = T_we_current[:3, :3]
+    pitch_current = rot2rpy(R_current)[1]  # Convert rotation matrix to roll-pitch-yaw angles
+    pitch_error = pitch_desired - pitch_current
+    # Normalize the angular error to the range [-pi, pi]
+    # This handles the wrap-around problem and finds the shortest path.
+    pitch_error = (pitch_error + np.pi) % (2 * np.pi) - np.pi
+
+    # Combine position and orientation errors
+    error = np.hstack((error_position, pitch_error))
+
+    return error, T_we_current
+
+def geometric2analyticJacobian(J,T_0e):
+    R_0e = T_0e[:3,:3]              # Extract rotation matrix from the end-effector pose
+    rpy_ee = rot2rpy(R_0e)  # Convert rotation matrix to roll-pitch-yaw angles
+    roll = rpy_ee[0]                # roll angle
+    pitch = rpy_ee[1]               # pitch angle
+    yaw = rpy_ee[2]                 # yaw angle    
+
+    # compute the mapping between euler rates and angular velocity
+    T_w = np.array([[math.cos(yaw)*math.cos(pitch),  -math.sin(yaw), 0],
+                    [math.sin(yaw)*math.cos(pitch),   math.cos(yaw), 0],
+                    [             -math.sin(pitch),               0, 1]])
+
+    T_a = np.vstack((
+        np.hstack((np.eye(3), np.zeros((3, 3)))),
+        np.hstack((np.zeros((3, 3)), np.linalg.inv(T_w)))
+    ))
+
+    # Ensure J is 2D
+    J_a = T_a @ J  # shape (6,5)
+    J_a = np.squeeze(J_a)
+
+    return J_a
+
+def inverseKinematics(p_desired, pitch_desired, model, data, q0=None, max_iter=5, tol=1e-6):
+    """
+    Perform inverse kinematics to find joint angles that achieve the desired end-effector pose.
+    
+    :param p_desired: Desired end-effector position (3-element array).
+    :param pitch_desired: Desired end-effector pitch orientation ( around the Y axis )
+    :param q0: Initial guess for joint angles (5-element array).
+    :param max_iter: Maximum number of iterations for convergence.
+    :param tol: Tolerance for convergence.
+    :return: Joint angles that achieve the desired end-effector pose.
+    """
+    
+    # Initialize variables
+    alpha = 1       # Step size
+    beta = 0.5      # Step size reduction factor
+    damp = 0.01     # Damping factor for numerical stability
+
+    log_grad = []
+    log_err = []
+
+    if q0 is None:
+        q0 = np.zeros(5)  # Default initial guess
+    q = q0.copy()
+
+    
+    for iter in range(max_iter):
+
+        # 1 COMPUTE ERROR
+        error, T_we_current = getError(p_desired, pitch_desired, model, data, q)  # Compute error
+
+        # 2 COMPUTE NEWTON STEP
+        J = differentKinematics(q)        # Compute Jacobian
+        # print('Jacobian at iteration {}:\n{}'.format(iter, J))
+        # Convert geometric Jacobian to analytic Jacobian to work with pitch error
+        J_a = geometric2analyticJacobian(J, T_we_current)
+        # print(f"Analitical Jacobian at iteration {iter}:\n{J_a}")
+        # Since our task is in 4D (position + pitch), we reduce the Jacobian to the relevant rows
+        J_a_reduced = J_a[[0, 1, 2, 4], :]  # row 0,1,2 = position; row 4 = pitch
+        # print(f"Jacobian at iteration {iter}:\n{J_a_reduced}")
+
+        # Compute the gradient of the error
+        H = np.dot(J_a_reduced, J_a_reduced.T)
+        H_reg = H + damp * np.eye(4)
+        v = - np.dot(J_a_reduced.T,(np.linalg.inv(H_reg)))  # Gradient descent step
+        grad = v.dot(error)
+        log_grad.append(grad)
+
+        # 3 DECREASE CRITERION
+        count = 0
+        while True:
+            next_q = q + alpha * grad
+            next_error, _= getError(p_desired, pitch_desired, model, data, next_q)
+            log_err.append(next_error)
+            # Check if the error has decreased
+            if np.linalg.norm(error) - np.linalg.norm(next_error) >= 0.0:
+                break
+            
+            print(f"Iteration {iter}: Error did not decrease: {np.linalg.norm(next_error)} >= {np.linalg.norm(error)}")
+            print(f"error: {error}, next error: {next_error}")
+            print(f"reducing step size from {alpha} to {alpha * beta}")
+            alpha = beta * alpha
+            count = count +1
+            if count > 10:
+                print(f"Step size reduction failed after {count} attempts, breaking out of the loop.")
+                break
+
+        # 4 CONVERGENCE CHECK
+        r = J_a_reduced.T.dot(next_error)
+        if np.linalg.norm(r)**2 < tol:
+            print(f"Numerical Inverse Kinematics converged in {iter+1} iterations.")
+            return next_q  # Convergence achieved
+
+        # If the check fails:
+        q = next_q          # Update the current joint angles
+        alpha = 1           # Reset step size for the next iteration
+
+    # log printing for debugging
+    path = os.path.join(os.path.dirname(__file__), 'ik_debug_log.txt')
+    log_file = open(path, "w")  # Open file for writing logs
+    for i in range(len(log_grad)):
+        log_file.write(f"Iteration {i}: Gradient = {log_grad[i]}, Error = {log_err[i]}\n")
+    log_file.close()
+
+    raise ValueError("Inverse kinematics did not converge within the maximum number of iterations.")

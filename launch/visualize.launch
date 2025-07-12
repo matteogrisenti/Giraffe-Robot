@@ -4,7 +4,6 @@
 
   <param name="robot_description" command="$(find xacro)/xacro $(find giraffe_robot)/urdf/giraffe.urdf"/>
   
-  <!-- Run your chair marker publisher -->
   <node pkg="giraffe_robot" type="chair_marker_publisher.py" name="chair_marker_publisher" output="screen"/>
 
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>

@@ -7,7 +7,7 @@ import pinocchio as pin
 import numpy as np
 from pathlib import Path
 
-from kinematics import directKinematics, differentKinematics  
+from kinematics import directKinematics, differentKinematics, inverseKinematics, rot2rpy
 
 # Load the URDF model
 current_dir = Path(__file__).resolve().parent
@@ -140,6 +140,35 @@ def differential_kinematic_single_comparison():
 
 
 
+
+############################################# INVERSE KINEMATICS TEST #########################################
+def inverse_kinematic_single_comparison():
+    # Generate a random valid joint configuration
+    test_q = pin.randomConfiguration(model)
+    print("Test joint configuration (q):", test_q, "\n")
+
+    # Derive the end-effector pose from the forward kinematics
+    pin.forwardKinematics(model, data, test_q)
+    pin.updateFramePlacements(model, data)
+
+    ee_id = model.getFrameId("mic")
+    target_pose = data.oMf[ee_id].homogeneous
+    print("Target pose (end-effector):\n", target_pose)
+
+    desired_position = target_pose[:3, 3]
+    desired_rotation = target_pose[:3, :3]
+    desired_pitch = rot2rpy(desired_rotation)[1]  # Convert rotation matrix to roll-pitch-yaw angles
+
+    # Run custom inverse kinematics
+    inverse_q = inverseKinematics(desired_position, desired_pitch, model, data)  # Assuming this function returns a joint configuration
+    print("Inverse kinematics result (q):", inverse_q, "\n")
+
+    # Compare results
+    error = test_q - inverse_q
+    print("Error between original and IK result:", error)
+
+
+
 if __name__ == "__main__":
     # print("Running single comparison...")
     # direct_kinematic_single_comparison()
@@ -147,6 +176,9 @@ if __name__ == "__main__":
     # print("\nRunning DK test with 10 iterations...")
     # test_direct_kinematic(n_iterations=10)
 
-    print("\nRunning differential kinematic single comparison...")
-    differential_kinematic_single_comparison()
+    #print("\nRunning differential kinematic single comparison...")
+    #differential_kinematic_single_comparison()
+
+    print("\nRunning inverse kinematic single comparison...")
+    inverse_kinematic_single_comparison()
 
