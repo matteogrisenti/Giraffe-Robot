@@ -144,13 +144,12 @@ def differential_kinematic_single_comparison():
 ############################################# INVERSE KINEMATICS TEST #########################################
 def inverse_kinematic_single_comparison():
     # Generate a random valid joint configuration
-    test_q = pin.randomConfiguration(model)
+    test_q = np.random.uniform(-np.pi, np.pi, model.nq)  # Random joint angles within [-pi, pi]
     print("Test joint configuration (q):", test_q, "\n")
 
     # Derive the end-effector pose from the forward kinematics
     pin.forwardKinematics(model, data, test_q)
     pin.updateFramePlacements(model, data)
-
     ee_id = model.getFrameId("mic")
     target_pose = data.oMf[ee_id].homogeneous
     print("Target pose (end-effector):\n", target_pose)
@@ -166,6 +165,13 @@ def inverse_kinematic_single_comparison():
     # Compare results
     error = test_q - inverse_q
     print("Error between original and IK result:", error)
+
+    # Compare the resulted end effector position and orientation
+    pin.forwardKinematics(model, data, inverse_q)
+    pin.updateFramePlacements(model, data)
+    ee_id = model.getFrameId("mic")
+    result_pose = data.oMf[ee_id].homogeneous
+    print("Resulted pose after IK:\n", result_pose)
 
 
 

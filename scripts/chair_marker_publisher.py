@@ -4,7 +4,7 @@ import rospy
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 
-def create_chair_marker(id, x, y, z):
+def create_chair_marker(id, x, y, z=0.4):
     marker = Marker()
     marker.header.frame_id = "floor"
     marker.header.stamp = rospy.Time.now()

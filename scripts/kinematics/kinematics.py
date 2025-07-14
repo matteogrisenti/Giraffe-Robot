@@ -273,7 +273,7 @@ def geometric2analyticJacobian(J,T_0e):
 
     return J_a
 
-def inverseKinematics(p_desired, pitch_desired, model, data, q0=None, max_iter=5, tol=1e-6):
+def inverseKinematics(p_desired, pitch_desired, model, data, q0=None, max_iter=100, tol=1e-6):
     """
     Perform inverse kinematics to find joint angles that achieve the desired end-effector pose.
     
@@ -290,70 +290,85 @@ def inverseKinematics(p_desired, pitch_desired, model, data, q0=None, max_iter=5
     beta = 0.5      # Step size reduction factor
     damp = 0.01     # Damping factor for numerical stability
 
-    log_grad = []
-    log_err = []
-
     if q0 is None:
         q0 = np.zeros(5)  # Default initial guess
     q = q0.copy()
+
+    # log printing for debugging
+    # path = os.path.join(os.path.dirname(__file__), 'ik_debug_log.txt')
+    # log_file = open(path, "w")  # Open file for writing logs
 
     
     for iter in range(max_iter):
 
         # 1 COMPUTE ERROR
         error, T_we_current = getError(p_desired, pitch_desired, model, data, q)  # Compute error
+        # log_file.write(f"\nIteration {iter}: Error = {error}\n")
 
         # 2 COMPUTE NEWTON STEP
         J = differentKinematics(q)        # Compute Jacobian
+        # log_file.write(f"Iteration {iter}: Geometric Jacobian = {J}\n")
         # print('Jacobian at iteration {}:\n{}'.format(iter, J))
+
         # Convert geometric Jacobian to analytic Jacobian to work with pitch error
         J_a = geometric2analyticJacobian(J, T_we_current)
         # print(f"Analitical Jacobian at iteration {iter}:\n{J_a}")
+        
         # Since our task is in 4D (position + pitch), we reduce the Jacobian to the relevant rows
         J_a_reduced = J_a[[0, 1, 2, 4], :]  # row 0,1,2 = position; row 4 = pitch
-        # print(f"Jacobian at iteration {iter}:\n{J_a_reduced}")
+        # print(f"Analitical Jacobian Reduce at iteration {iter}:\n{J_a_reduced}")
+        # log_file.write(f"Iteration {iter}: Reduced Analytic Jacobian = {J_a_reduced}\n")
+        cond = np.linalg.cond(J_a_reduced)
+        # print(f"Jacobian condition number: {cond:.2e}")
+        # log_file.write(f"Iteration {iter}: Jacobian condition number: {cond:.2e}\n")
 
         # Compute the gradient of the error
-        H = np.dot(J_a_reduced, J_a_reduced.T)
+        Jt = J_a_reduced.T
+        # print(f"Jacobian Transpose at iteration {iter}:\n{Jt}")
+        # log_file.write(f"Iteration {iter}: Jacobian Transpose = {Jt}\n")
+        H = J_a_reduced @ Jt
+        # print(f"Hessian at iteration {iter}:\n{H}")
+        # log_file.write(f"Iteration {iter}: Hessian = {H}\n")
         H_reg = H + damp * np.eye(4)
-        v = - np.dot(J_a_reduced.T,(np.linalg.inv(H_reg)))  # Gradient descent step
-        grad = v.dot(error)
-        log_grad.append(grad)
+        # print(f"Regularized Hessian at iteration {iter}:\n{H_reg}")
+        # log_file.write(f"Iteration {iter}: Regularized Hessian = {H_reg}\n")
+        grad = Jt @ np.linalg.solve(H_reg, error)
+        # print(f"Gradient at iteration {iter}:\n{grad}")
+        # log_file.write(f"Iteration {iter}: Gradient = {grad}\n")
 
         # 3 DECREASE CRITERION
         count = 0
         while True:
             next_q = q + alpha * grad
             next_error, _= getError(p_desired, pitch_desired, model, data, next_q)
-            log_err.append(next_error)
+            # log_file.write(f"Iteration {iter}: Next Error = {next_error}\n")
+
             # Check if the error has decreased
             if np.linalg.norm(error) - np.linalg.norm(next_error) >= 0.0:
+                # log_file.write(f"Iteration {iter}: Error decreased: {np.linalg.norm(next_error)} < {np.linalg.norm(error)}")
                 break
-            
-            print(f"Iteration {iter}: Error did not decrease: {np.linalg.norm(next_error)} >= {np.linalg.norm(error)}")
-            print(f"error: {error}, next error: {next_error}")
-            print(f"reducing step size from {alpha} to {alpha * beta}")
+
+            # log_file.write(f"Iteration {iter}: Error did not decrease: {np.linalg.norm(next_error)} >= {np.linalg.norm(error)}")
+            # log_file.write(f"error: {error}, next error: {next_error}")
+            # log_file.write(f"reducing step size from {alpha} to {alpha * beta}")
+
             alpha = beta * alpha
             count = count +1
-            if count > 10:
-                print(f"Step size reduction failed after {count} attempts, breaking out of the loop.")
+
+            if count > 10:  # If we have tried to reduce the step size too many times, break to avoid infinite loop
+                # log_file.write(f"Step size reduction failed after {count} attempts, breaking out of the loop.")
                 break
 
         # 4 CONVERGENCE CHECK
         r = J_a_reduced.T.dot(next_error)
         if np.linalg.norm(r)**2 < tol:
             print(f"Numerical Inverse Kinematics converged in {iter+1} iterations.")
+            # log_file.write(f"Numerical Inverse Kinematics converged in {iter+1} iterations.\n")
             return next_q  # Convergence achieved
 
         # If the check fails:
         q = next_q          # Update the current joint angles
         alpha = 1           # Reset step size for the next iteration
 
-    # log printing for debugging
-    path = os.path.join(os.path.dirname(__file__), 'ik_debug_log.txt')
-    log_file = open(path, "w")  # Open file for writing logs
-    for i in range(len(log_grad)):
-        log_file.write(f"Iteration {i}: Gradient = {log_grad[i]}, Error = {log_err[i]}\n")
-    log_file.close()
-
+    # log_file.close()  # Close the log file
     raise ValueError("Inverse kinematics did not converge within the maximum number of iterations.")
