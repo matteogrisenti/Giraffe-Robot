@@ -1,8 +1,13 @@
-1) source devel/setup.bash
+1) ~/giraffe_ws$ source devel/setup.bash
         check: rospack list | grep giraffe_robot
 
 2) roslaunch giraffe_robot visualize.launch
 
 
-
+Build the giraffe_processed
 rosrun xacro xacro /home/matteo/giraffe_ws/src/giraffe_robot/urdf/giraffe.urdf -o /home/matteo/giraffe_ws/src/giraffe_robot/urdf/giraffe_processed.urdf
+
+run the polynomial trajectory task
+~/giraffe_ws/src$ python3 -m giraffe_robot.scripts.polynomial_trajectory.test
+
+~/giraffe_ws/src$ python3 -m giraffe_robot.scripts.computed_torque_control.test

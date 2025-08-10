@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+'''
+Joint State Publisher for ROS
+This script publishes joint states to the ROS topic /joint_states
+by reading from the /discrete_joint_states topic. This allows for
+smooth integration of joint state information into the ROS ecosystem.
+'''
+
 import rospy
 from sensor_msgs.msg import JointState
 

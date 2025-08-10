@@ -7,7 +7,7 @@ import pinocchio as pin
 from pathlib import Path
 from sensor_msgs.msg import JointState
 from visualization_msgs.msg import Marker
-from .polynomial_trajectory import task_domain_polynomial_trajectory
+from giraffe_robot.scripts.polynomial_trajectory.polynomial_trajectory import task_domain_polynomial_trajectory
 
 '''
 This script is designed to test the polynomial trajectory generation for a robotic arm.
@@ -40,61 +40,6 @@ def json_recover_polynomial_trajectory():
     return timer, q_log, qd_log, qdd_log    
 
 
-def publish_trajectory_marker(position, marker_id, frame_id="world"):
-    """
-    Publish a red sphere marker at the given position, it aim to visualize the end-effector trajectory.
-    """
-   
-
-    marker = Marker()
-    marker.header.frame_id = frame_id
-    marker.header.stamp = rospy.Time.now()
-    marker.ns = "trajectory_markers"
-    marker.id = marker_id
-    marker.type = Marker.SPHERE
-    marker.action = Marker.ADD
-
-    # Set position
-    marker.pose.position.x = position[0]
-    marker.pose.position.y = position[1]
-    marker.pose.position.z = position[2]
-
-    # Orientation not needed for sphere
-    marker.pose.orientation.x = 0.0
-    marker.pose.orientation.y = 0.0
-    marker.pose.orientation.z = 0.0
-    marker.pose.orientation.w = 1.0
-
-    # Scale (size of the sphere)
-    scale = 0.2  # Radius of the sphere
-    marker.scale.x = scale
-    marker.scale.y = scale
-    marker.scale.z = scale
-
-    # Color (red with full alpha)
-    marker.color.r = 1.0
-    marker.color.g = 0.0
-    marker.color.b = 0.0
-    marker.color.a = 0.8
-
-    # Lifetime (0 means forever)
-    marker.lifetime = rospy.Duration(0)
-
-    return marker
-    
-
-
-def wrap_direct_kinematic(model, data, q):
-    """
-    This function wraps the direct kinematics computation using Pinocchio.
-    It computes the forward kinematics for the given joint configuration.
-    """
-    pin.forwardKinematics(model, data, q)
-    pin.updateFramePlacements(model, data)
-    pose = data.oMf[model.getFrameId("mic")].homogeneous  # Get the end-effector pose
-    return pose[:3, 3]  # Return the position part of the pose
-
-
 def polynomial_trajectory_publisher(model, data):
     """ 
     This function initializes a ROS node and publishes the polynomial trajectory.
@@ -120,11 +65,6 @@ def polynomial_trajectory_publisher(model, data):
         q_step = np.array(q_log[step])
         qd_step = np.array(qd_log[step])
         qdd_step = np.array(qdd_log[step])
-
-        # Publish the trajectory marker for visualization
-        position = wrap_direct_kinematic(model, data, q_step)
-        marker = publish_trajectory_marker(position, marker_id=step)
-        marker_pub.publish(marker)
 
         # Create a JointState message
         msg = JointState()
@@ -174,7 +114,7 @@ if __name__ == '__main__':
 
     # Define the end effector position and pitch
     position_d = np.array([1, 1, 1])    # Example position
-    pitch_d = 1                         # Example pitch
+    pitch_d = -0.3                         # Example pitch
 
     # Load the URDF model
     current_dir = Path(__file__).resolve().parent
