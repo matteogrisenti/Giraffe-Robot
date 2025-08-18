@@ -1,190 +1,209 @@
 #!/usr/bin/env python3
 
-# This script compares a custom kinematics implementation with the Pinocchio library's result
+"""
+Script to compare a custom kinematics implementation with Pinocchio results.
 
-from __future__ import print_function
-import pinocchio as pin
-import numpy as np
+Features:
+- Direct kinematics comparison
+- Differential kinematics comparison (Jacobian)
+- Inverse kinematics comparison
+
+"""
+
 from pathlib import Path
+
+import numpy as np
+import pinocchio as pin
 
 from kinematics import directKinematics, differentKinematics, inverseKinematics, rot2rpy
 
-# Load the URDF model
+
+
+
+# -----------------------------------------------------------------------------
+# Load URDF and initialize Pinocchio model
+# -----------------------------------------------------------------------------
 current_dir = Path(__file__).resolve().parent
 urdf_path = current_dir.parent.parent / "urdf" / "giraffe_processed.urdf"
 if not urdf_path.exists():
     raise FileNotFoundError(f"URDF file not found at {urdf_path}")
 
-# Initialize Pinocchio model and data
 model = pin.buildModelFromUrdf(str(urdf_path))
 data = model.createData()
 
-# Define the frames of interest in the kinematic chain
-frames = ['base_link', 'shoulder_link', 'arm_link', 'extend_link', 'wrist_link', 'mic_link', 'mic']
+# Frames of interest
+FRAMES = ["base_link", "shoulder_link", "arm_link",
+          "extend_link", "wrist_link", "mic_link", "mic"]
 
 
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+def get_frame_transform(frame: str, q: np.ndarray) -> np.ndarray:
+    """Return the homogeneous transform of a frame using Pinocchio."""
+    try:
+        frame_id = model.getFrameId(frame)
+        pin.forwardKinematics(model, data, q)
+        pin.updateFramePlacements(model, data)
+        return data.oMf[frame_id].homogeneous
+    except Exception as e:
+        print(f"Frame '{frame}' not found: {e}")
+        return None
 
-######################################### DIRECT KINEMATICS TEST #########################################
-def direct_kinematic_single_comparison():
-    """    
-    Runs a single comparison between custom and Pinocchio forward kinematics.
-    This function generates a random joint configuration, computes the forward kinematics using both methods,
-    and prints the resulting transformation matrices for each frame.
+
+def clean_matrix(mat: np.ndarray, tol: float = 1e-4) -> np.ndarray:
+    """Zero-out small numerical noise in a matrix."""
+    mat = mat.copy()
+    mat[np.abs(mat) < tol] = 0.0
+    return mat
+
+
+# -----------------------------------------------------------------------------
+# Direct Kinematics Tests
+# -----------------------------------------------------------------------------
+def direct_kinematics_single():
     """
-    # Define a test joint configuration of appropriate size
-    # test_q = np.zeros(model.nq)   ->  Used to first testing
-
-    # Generate a random valid joint configuration
-    test_q = pin.randomConfiguration(model)
-    print("Test joint configuration (q):", test_q, "\n")
-
-
-    # Run custom forward kinematics
-    T_w0, T_w1, T_w2, T_w3, T_w4, T_w5, T_we = directKinematics(test_q)
-    custom_T = [T_w0, T_w1, T_w2, T_w3, T_w4, T_w5, T_we]
-
-    # Run Pinocchio forward kinematics
-    pin.forwardKinematics(model, data, test_q)
-    pin.updateFramePlacements(model, data)
-
-    for frame in frames:
-        try:
-            ee_id = model.getFrameId(frame)
-            pin_T_0x = data.oMf[ee_id].homogeneous
-        except:
-            print(f"Frame '{frame}' not found in model. Available frames: {[f.name for f in model.frames]}")
-
-        # Compare results
-        print(f"\nFrame: {frame}")
-        print("- Custom T:\n", custom_T[frames.index(frame)])
-        print("- Pinocchio T:\n", pin_T_0x)
-
-
-def test_direct_kinematic_iteration():
-    """
-    Runs a single DK test and returns per-frame matrix errors (custom - pinocchio) as 4x4 numpy arrays.
+    Run a single DK comparison with random configuration.
     """
     q = pin.randomConfiguration(model)
+    print(f"Random joint configuration (q): {q}")
+
     T_custom_list = directKinematics(q)
 
-    pin.forwardKinematics(model, data, q)
-    pin.updateFramePlacements(model, data)
-
-    errors = {}
-    for i, frame in enumerate(frames):
-        try:
-            frame_id = model.getFrameId(frame)
-            T_pin = data.oMf[frame_id].homogeneous
-            T_custom = T_custom_list[i]
-            delta = T_custom - T_pin
-            delta[np.abs(delta) < 1e-4] = 0.0  # Clean small numerical noise
-            errors[frame] = delta
-        except:
-            print(f"[Warning] Frame '{frame}' not found in model.")
+    for i, frame in enumerate(FRAMES):
+        T_pin = get_frame_transform(frame, q)
+        if T_pin is None:
             continue
+        print(f"Frame: {frame}")
+        print(f"- Custom T:\n{T_custom_list[i]}")
+        print(f"- Pinocchio T:\n{T_pin}")
 
-    return errors
 
-
-def test_direct_kinematic(n_iterations=10):
+def direct_kinematics_avg_error(n_iter: int = 10):
     """
-    Runs DK tests for multiple iterations and returns the average element-wise 4x4 error matrix per frame.
+    Run multiple DK comparisons and return average element-wise error per frame.
     """
-    accumulated_errors = {frame: np.zeros((4, 4)) for frame in frames}
-    valid_counts = {frame: 0 for frame in frames}
+    accumulated = {f: np.zeros((4, 4)) for f in FRAMES}
+    counts = {f: 0 for f in FRAMES}
 
-    for _ in range(n_iterations):
-        iteration_errors = test_direct_kinematic_iteration()
-        for frame, err_matrix in iteration_errors.items():
-            accumulated_errors[frame] += err_matrix
-            valid_counts[frame] += 1
+    for _ in range(n_iter):
+        q = pin.randomConfiguration(model)
+        T_custom_list = directKinematics(q)
+        for i, frame in enumerate(FRAMES):
+            T_pin = get_frame_transform(frame, q)
+            if T_pin is None:
+                continue
+            delta = clean_matrix(T_custom_list[i] - T_pin)
+            accumulated[frame] += delta
+            counts[frame] += 1
 
+    print(f"Average DK Errors over {n_iter} iterations")
     avg_errors = {}
-    print(f"\n=== Average Element-wise Error Matrices over {n_iterations} iterations ===")
-    for frame in frames:
-        if valid_counts[frame] > 0:
-            avg = accumulated_errors[frame] / valid_counts[frame]
-            avg[np.abs(avg) < 1e-4] = 0.0  # Clean again final results
+    for frame in FRAMES:
+        if counts[frame] > 0:
+            avg = clean_matrix(accumulated[frame] / counts[frame])
             avg_errors[frame] = avg
             print(f"\nFrame: {frame}\n{avg}")
         else:
             avg_errors[frame] = None
-            print(f"\nFrame: {frame} -> [Frame not found in model]")
+            print(f"Frame '{frame}' not found in any iteration")
 
     return avg_errors
 
 
 
-######################################### DIFFERNTIAL KINEMATICS TEST #########################################
-def differential_kinematic_single_comparison():
-    # Generate a random valid joint configuration
-    test_q = pin.randomConfiguration(model)
-    print("Test joint configuration (q):", test_q, "\n")
 
-    J_custom = differentKinematics(test_q)  
+# -----------------------------------------------------------------------------
+# Differential Kinematics Tests
+# -----------------------------------------------------------------------------
+def differential_kinematics_single(frame: str = "mic"):
+    """
+    Compare custom and Pinocchio Jacobians for one frame.
+    """
+    q = pin.randomConfiguration(model)
+    J_custom = differentKinematics(q)
 
-    # Get the frame index (use frame name or index directly)
-    frame_name = "mic"
-    frame_id = model.getFrameId(frame_name)
+    try:
+        frame_id = model.getFrameId(frame)
+        J_pin = pin.computeFrameJacobian(model, data, q, frame_id, pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)
+    except Exception as e:
+        print(f"Could not compute Jacobian for '{frame}': {e}")
+        return
 
-    # Compute Pinocchio's Jacobian at that frame
-    J_pinocchio = pin.computeFrameJacobian(model, data, test_q, frame_id, pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)
+    diff = J_custom - J_pin
+    diff = clean_matrix(diff)
 
-    # Compare results
-    print("- Custom J:\n", J_custom)
-    print("- Pinocchio J:\n", J_pinocchio)
-
-    # Compute the difference
-    jacobian_diff = J_custom - J_pinocchio
-    print(f"Custom vs Pinocchio Jacobian difference at frame '{frame_name}':\n", jacobian_diff)
-
-
+    print(f"Frame: {frame}")
+    print(f"- Custom J:\n{J_custom}\n")
+    print(f"- Pinocchio J:\n{J_pin}\n")
+    print(f"- Difference:\n{diff}")
 
 
-############################################# INVERSE KINEMATICS TEST #########################################
-def inverse_kinematic_single_comparison():
-    # Generate a random valid joint configuration
-    test_q = np.random.uniform(-np.pi, np.pi, model.nq)  # Random joint angles within [-pi, pi]
-    print("Test joint configuration (q):", test_q, "\n")
 
-    # Derive the end-effector pose from the forward kinematics
-    pin.forwardKinematics(model, data, test_q)
-    pin.updateFramePlacements(model, data)
-    ee_id = model.getFrameId("mic")
-    target_pose = data.oMf[ee_id].homogeneous
-    print("Target pose (end-effector):\n", target_pose)
 
-    desired_position = target_pose[:3, 3]
-    desired_rotation = target_pose[:3, :3]
-    desired_pitch = rot2rpy(desired_rotation)[1]  # Convert rotation matrix to roll-pitch-yaw angles
+# -----------------------------------------------------------------------------
+# Inverse Kinematics Tests
+# -----------------------------------------------------------------------------
+def inverse_kinematics_single(frame: str = "mic"):
+    """
+    Validate custom IK by generating a target from random q and solving for it.
+    """
+    q_true = np.random.uniform(-np.pi, np.pi, model.nq)
+    print(f"Ground truth joint configuration: {q_true}")
 
-    # Run custom inverse kinematics
-    inverse_q = inverseKinematics(desired_position, desired_pitch, model, data)  # Assuming this function returns a joint configuration
-    print("Inverse kinematics result (q):", inverse_q, "\n")
+    target_pose = get_frame_transform(frame, q_true)
+    if target_pose is None:
+        return
 
-    # Compare results
-    error = test_q - inverse_q
-    print("Error between original and IK result:", error)
+    desired_pos = target_pose[:3, 3]
+    desired_rot = target_pose[:3, :3]
+    desired_pitch = rot2rpy(desired_rot)[1]
 
-    # Compare the resulted end effector position and orientation
-    pin.forwardKinematics(model, data, inverse_q)
-    pin.updateFramePlacements(model, data)
-    ee_id = model.getFrameId("mic")
-    result_pose = data.oMf[ee_id].homogeneous
-    print("Resulted pose after IK:\n", result_pose)
+    print(f"Target position from FK:\n{desired_pos}")
+    print(f"Target pitch from FK: {desired_pitch}")
 
+    q_ik = inverseKinematics(desired_pos, desired_pitch, model, data)
+    print(f"Inverse kinematics solution q:\n{q_ik}")
+
+    # Compare poses
+    result_pose = get_frame_transform(frame, q_ik)
+    if result_pose is None:
+        return
+    
+    result_pos = result_pose[:3, 3]
+    result_rot = result_pose[:3, :3]
+    result_pitch = rot2rpy(result_rot)[1]
+
+    print(f"Result position:\n{result_pos}")
+    print(f"Result pitch: {result_pitch}")
+
+    print(f"Position error: {np.linalg.norm(result_pos - desired_pos)}")
+    print(f"Pitch error: {result_pitch - desired_pitch}")
+
+
+
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+def main():
+    print(f"\n{'='*40}")
+    print("DIRECT KINEMATICS TEST")
+    print(f"{'='*40}\n")
+    direct_kinematics_avg_error(n_iter=10)
+
+    print(f"\n{'='*40}")
+    print("DIFFERENTIAL KINEMATICS TEST")
+    print(f"{'='*40}\n")
+    differential_kinematics_single(frame="mic")
+
+    print(f"\n{'='*40}")
+    print("INVERSE KINEMATICS TEST")
+    print(f"{'='*40}\n")
+    inverse_kinematics_single(frame="mic")
 
 
 if __name__ == "__main__":
-    # print("Running single comparison...")
-    # direct_kinematic_single_comparison()
+    main()
 
-    # print("\nRunning DK test with 10 iterations...")
-    # test_direct_kinematic(n_iterations=10)
-
-    #print("\nRunning differential kinematic single comparison...")
-    #differential_kinematic_single_comparison()
-
-    print("\nRunning inverse kinematic single comparison...")
-    inverse_kinematic_single_comparison()
 

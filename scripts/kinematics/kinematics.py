@@ -28,6 +28,9 @@ a6 = wrist_radius + mic_stick_length + 2*mic_stick_radius
 
 
 
+# -----------------------------------------------------------------------------
+# Direct Kinematics
+# -----------------------------------------------------------------------------
 def directKinematics(q):
 
     q1 = q[0] # shoulder_yaw joint position
@@ -154,7 +157,9 @@ def directKinematics(q):
 
 
 
-
+# -----------------------------------------------------------------------------
+# Differential Kinematics 
+# -----------------------------------------------------------------------------
 def differentKinematics(q):
 
     # Compute forward kinematics for the different configuration
@@ -201,9 +206,13 @@ def differentKinematics(q):
     # Combine linear + angular
     J = np.vstack((J_p, J_o))  # 6 × 5
 
-    return J,
+    return J
 
 
+
+# -----------------------------------------------------------------------------
+# Inverse Kinematics
+# -----------------------------------------------------------------------------
 def rot2rpy(R):
     """
     Convert a rotation matrix to roll-pitch-yaw angles.
@@ -272,6 +281,7 @@ def geometric2analyticJacobian(J,T_0e):
     J_a = np.squeeze(J_a)
 
     return J_a
+
 
 def inverseKinematics(p_desired, pitch_desired, model, data, q0=None, max_iter=100, tol=1e-6):
     """

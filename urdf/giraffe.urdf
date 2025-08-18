@@ -28,7 +28,7 @@
   <xacro:property name="mic_stick_radius" value="0.015"/>
 
 
-   <!-- Mass Computation --> 
+  <!-- Mass Computation --> 
   <xacro:property name="shoulder_joint_mass" value="${rho_al * pi * pow(shoulder_joint_radius,2) * shoulder_joint_height}"/>
   <xacro:property name="arm_mass" value="${rho_al * pi * pow(arm_radius,2) * arm_length}"/>
   <xacro:property name="extend_link_mass" value="${rho_al * pi * pow(wrist_radius,2) * extend_link_length}"/>
@@ -142,7 +142,7 @@
 
   </link>
 
-  <!-- Revolute joint 2: roll for shoulder -->
+  <!-- Revolute joint 2: pitch for shoulder -->
   <joint name="shoulder_roll" type="revolute">
     <parent link="shoulder_link"/>
     <child link="arm_link"/>

@@ -7,6 +7,10 @@
 Build the giraffe_processed
 rosrun xacro xacro /home/matteo/giraffe_ws/src/giraffe_robot/urdf/giraffe.urdf -o /home/matteo/giraffe_ws/src/giraffe_robot/urdf/giraffe_processed.urdf
 
+
+3) CUSTOM KINEMATICS TEST
+~/giraffe_ws/src/giraffe_robot$ python3 scripts/kinematics/test_custom_kinematics.py 
+
 run the polynomial trajectory task
 ~/giraffe_ws/src$ python3 -m giraffe_robot.scripts.polynomial_trajectory.test
 
