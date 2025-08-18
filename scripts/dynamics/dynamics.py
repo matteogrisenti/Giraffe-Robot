@@ -1,4 +1,3 @@
-from __future__ import print_function
 import pinocchio as pin
 import numpy as np
 
@@ -50,7 +49,7 @@ def forwardDynamics(q, qd, tau, model, data):
     M = getM(q, model, data)
 
     # compute the bias term h
-    h = C +g
+    h = C + g
 
     # Solve for joint accelerations
     qdd = np.linalg.solve(M, tau - h)
