@@ -7,6 +7,9 @@ Steps:
 1. Compute torques with Pinocchio's RNEA given q, qd, qdd.
 2. Use custom forwardDynamics to recompute qdd from those torques.
 3. Compare the reconstructed qdd with the original input.
+
+Run:
+~/giraffe_ws/src/giraffe_robot$ python3 scripts/dynamics/test.py 
 """
 
 from __future__ import print_function

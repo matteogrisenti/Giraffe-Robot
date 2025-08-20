@@ -8,6 +8,8 @@ Features:
 - Differential kinematics comparison (Jacobian)
 - Inverse kinematics comparison
 
+Run:
+~/giraffe_ws/src/giraffe_robot$ python3 scripts/kinematics/test_custom_kinematics.py 
 """
 
 from pathlib import Path
@@ -149,6 +151,7 @@ def inverse_kinematics_single(frame: str = "mic"):
     Validate custom IK by generating a target from random q and solving for it.
     """
     q_true = np.random.uniform(-np.pi, np.pi, model.nq)
+    # q_true = np.array([ 0.39868993, -0.40542804,  2.52667555,  0.36254209,  0.47460092])
     print(f"Ground truth joint configuration: {q_true}")
 
     target_pose = get_frame_transform(frame, q_true)

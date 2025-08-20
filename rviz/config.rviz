@@ -96,6 +96,12 @@ Visualization Manager:
       Name: Chairs
       Queue Size: 10
       Alpha: 1
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /trajectory_marker
+      Name: Polynomial Trajectory
+      Queue Size: 20
+      Alpha: 1
   Enabled: true
   Global Options:
     Background Color: 252; 252; 252

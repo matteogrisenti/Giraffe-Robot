@@ -1,8 +1,9 @@
 import os
 import json
+import pinocchio as pin
 import numpy as np
 
-from ..kinematics.kinematics import inverseKinematics
+from scripts.kinematics.kinematics import inverseKinematics
 
 
 def fifthOrderPolynomialCoefficients(tf, q0 , qf , qd0 = np.zeros(5), qdf = np.zeros(5), qdd0 = np.zeros(5), qddf = np.zeros(5)):
@@ -37,6 +38,8 @@ def fifthOrderPolynomialCoefficients(tf, q0 , qf , qd0 = np.zeros(5), qdf = np.z
     polyCoeff = matrix_inv.dot(polyVector)
 
     return polyCoeff
+
+
 
 
 def polynomial_trajectory(q0, qf, qd0 = np.zeros(5), qdf = np.zeros(5), qdd0 = np.zeros(5), qddf = np.zeros(5), duration=5.0):
@@ -88,23 +91,27 @@ def polynomial_trajectory(q0, qf, qd0 = np.zeros(5), qdf = np.zeros(5), qdd0 = n
     with open(path, 'w') as f:
         json.dump(trajectory_data, f, indent=4)
 
-    print("Polynomial trajectory data saved to 'trajectory_data.json'.")
+    print("Polynomial Trajectory Generated, data saved to 'trajectory_data.json'.")
+
+
 
 
 def task_domain_polynomial_trajectory(postion_d, pitch_d, model, data, q0 = np.zeros(5), duration=5.0):
     """
-    This function is a task domain for generating a polynomial trajectory. 
+    This function is a task domain polynomial trajectory generator. 
     It takes a desired position and pitch, compute the q_d with inverse kinematics
     and computes the polynomial trajectory coefficients.
     """
+
+    print("\nDesired task configuration: pose", postion_d, " pitch", pitch_d)
+
     # Compute inverse kinematics to get the desired joint positions
     q_d = inverseKinematics(postion_d, pitch_d, model, data, q0=q0)
-    print("Desired joint configuration (q_d):", q_d)
+    print("Desired joint configuration (IK):", q_d)
 
+    # Generate the polynomial trajectory, it is saved in a json file
     polynomial_trajectory( q0=q0, qf=q_d, duration=duration )
 
-    # Generate the polynomial trajectory
-    print("Generating polynomial trajectory...")
 
 
 

@@ -261,7 +261,7 @@ def getError(p_desired, pitch_desired, model, data, q):
 
 def geometric2analyticJacobian(J,T_0e):
     R_0e = T_0e[:3,:3]              # Extract rotation matrix from the end-effector pose
-    rpy_ee = rot2rpy(R_0e)  # Convert rotation matrix to roll-pitch-yaw angles
+    rpy_ee = rot2rpy(R_0e)          # Convert rotation matrix to roll-pitch-yaw angles
     roll = rpy_ee[0]                # roll angle
     pitch = rpy_ee[1]               # pitch angle
     yaw = rpy_ee[2]                 # yaw angle    

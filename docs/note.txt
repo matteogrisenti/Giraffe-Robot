@@ -14,7 +14,8 @@ rosrun xacro xacro /home/matteo/giraffe_ws/src/giraffe_robot/urdf/giraffe.urdf -
 4) DYNAMIC SIMULATION
 ~/giraffe_ws/src/giraffe_robot$ python3 scripts/dynamics/test.py 
 
-run the polynomial trajectory task
-~/giraffe_ws/src$ python3 -m giraffe_robot.scripts.polynomial_trajectory.test
+5) POLYNOMIAL TRACKING 
+~/giraffe_ws/src/giraffe_robot$ python3 -m scripts.polynomial_trajectory.test
 
+6) COMPUTE TORQUE CONTROLL 
 ~/giraffe_ws/src$ python3 -m giraffe_robot.scripts.computed_torque_control.test

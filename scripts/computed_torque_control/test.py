@@ -11,6 +11,9 @@ Main Features:
 - Logs debug data for analysis      (directory: **main_secondary_task** if secondary task enable otherwise **main_task**)
 - Produces trajectory/error plots   (directory: **main_secondary_task** if secondary task enable otherwise **main_task**)
 - Simulate the motion in RVIZ in online or offline mode
+
+Run:
+~/giraffe_ws/src$ python3 -m giraffe_robot.scripts.computed_torque_control.test
 """
 
 import os
@@ -641,7 +644,11 @@ def rviz_simulation(second_task=True, rate_hz=1000):
 # ================================================================
 if __name__ == "__main__":
     second_task = False  # Set to False to disable secondary task
+
+    # Run the Controller to generate the trajectory
     # asyncio.run(test_task_space_inverse_dynamics(second_task=second_task))
+
+    # Run the Simulation
     rviz_simulation(second_task=second_task, rate_hz=1000)
 
 
